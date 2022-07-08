@@ -1,29 +1,27 @@
 import axios from 'axios'
+import { IAxiosCore, IDecryptor, ILogger } from './declares/interfaces'
+import logger from './handlers/logger'
+import decryptor from './handlers/decryptor'
 
-import Decryptor from './handlers/Decryptor'
-import Logger from './handlers/Logger'
-
-class AxiosCore {
-  private logger?: Logger
-  private decryptor?: Decryptor
+class AxiosCore implements IAxiosCore {
+  private logger!: ILogger
+  private decryptor!: IDecryptor
 
   async request(request) {
     const response = await axios.request(request)
     if (this.decryptor) {
       const decryptedRes = this.decryptor.decrypt(response)
-      if (this.logger) {
-        this.logger.log(request)(decryptedRes)
-      }
+      this.logger.log(request)(decryptedRes)
     }
 
     return response
   }
 
-  useLogger(logger: Logger) {
+  useLogger(logger: ILogger) {
     this.logger = logger
   }
 
-  useDecryptor(decryptor: Decryptor) {
+  useDecryptor(decryptor: IDecryptor) {
     this.decryptor = decryptor
   }
 }
@@ -31,7 +29,7 @@ class AxiosCore {
 const axiosCore = new AxiosCore()
 
 //For dependency injection:
-axiosCore.useLogger(new Logger())
-axiosCore.useDecryptor(new Decryptor())
+axiosCore.useLogger(logger)
+axiosCore.useDecryptor(decryptor)
 
 export default axiosCore

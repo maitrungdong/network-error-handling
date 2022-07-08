@@ -1,4 +1,6 @@
-class Decryptor {
+import { IDecryptor } from '../declares/interfaces'
+
+class Decryptor implements IDecryptor {
   decrypt(rawResponse) {
     let decryptedRes = null
     //TODO: process rawResponse to decrypted response
@@ -11,4 +13,5 @@ class Decryptor {
   }
 }
 
-export default Decryptor
+const decryptor = new Decryptor()
+export default decryptor

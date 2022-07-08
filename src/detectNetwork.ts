@@ -1,155 +1,156 @@
-type DNOption = {
+type DetectNetworkOption = {
   urls: string[]
   timeout: number
   intervalTime: number
 }
 
-type Listener = (val?: string) => {}
-;(function () {
-  class DetectNetwork {
-    private isOnline = true
-    private options: DNOption = {
-      urls: ['https://www.google.com', 'https://www.microsoft.com'],
-      timeout: 3000,
-      intervalTime: 10000,
+type ListenerFn = (val?: string) => void
+
+class DetectNetwork {
+  private isOnline = true
+  private options: DetectNetworkOption = {
+    urls: ['https://www.google.com', 'https://www.microsoft.com'],
+    timeout: 3000,
+    intervalTime: 10000,
+  }
+  private pingId?: number
+
+  private onlineListeners: ListenerFn[] = []
+  private offlineListeners: ListenerFn[] = []
+  private onChangeListeners: ListenerFn[] = []
+
+  constructor(option?: DetectNetworkOption) {
+    if (option?.urls) {
+      this.options.urls = option.urls
     }
-    private pingId?: number
-
-    private onlineListeners: Listener[] = []
-    private offlineListeners: Listener[] = []
-    private onChangeListeners: Listener[] = []
-
-    constructor(options: DNOption) {
-      if (Array.isArray(options.urls)) {
-        this.options.urls = options.urls
-      }
-      if (typeof options.timeout === 'number') {
-        this.options.timeout = options.timeout
-      }
-      if (typeof options.intervalTime === 'number') {
-        this.options.intervalTime = options.intervalTime
-      }
-
-      //TODO: start ping to servers to check internet.
-      this.startPing()
+    if (option?.timeout) {
+      this.options.timeout = option.timeout
+    }
+    if (option?.intervalTime) {
+      this.options.intervalTime = option.intervalTime
     }
 
-    addEventListener(event, listener) {
-      switch (event) {
-        case 'online': {
-          this.onlineListeners.push(listener)
-          break
-        }
-        case 'offline': {
-          this.offlineListeners.push(listener)
-          break
-        }
-        case 'change': {
-          this.onChangeListeners.push(listener)
-          break
-        }
-        default: {
-          break
-        }
+    //TODO: start ping to servers to check internet.
+    this.startPing()
+  }
+
+  public addEventListener(event: string, listener: ListenerFn) {
+    switch (event) {
+      case 'online': {
+        this.onlineListeners.push(listener)
+        break
+      }
+      case 'offline': {
+        this.offlineListeners.push(listener)
+        break
+      }
+      case 'change': {
+        this.onChangeListeners.push(listener)
+        break
+      }
+      default: {
+        break
       }
     }
+  }
 
-    removeEventListener(event, listener) {
-      switch (event) {
-        case 'online': {
-          this.onlineListeners = this.onlineListeners.filter(
-            (l) => l !== listener
-          )
-          break
-        }
-        case 'offline': {
-          this.offlineListeners = this.offlineListeners.filter(
-            (l) => l !== listener
-          )
-          break
-        }
-        case 'change': {
-          this.onChangeListeners = this.onChangeListeners.filter(
-            (l) => l !== listener
-          )
-          break
-        }
-        default: {
-          break
-        }
+  public removeEventListener(event: string, listener: ListenerFn) {
+    switch (event) {
+      case 'online': {
+        this.onlineListeners = this.onlineListeners.filter(
+          (l) => l !== listener
+        )
+        break
+      }
+      case 'offline': {
+        this.offlineListeners = this.offlineListeners.filter(
+          (l) => l !== listener
+        )
+        break
+      }
+      case 'change': {
+        this.onChangeListeners = this.onChangeListeners.filter(
+          (l) => l !== listener
+        )
+        break
+      }
+      default: {
+        break
       }
     }
+  }
 
-    private ping({ urls, timeout }) {
-      return new Promise((resolve) => {
-        const isOnline = () => resolve(true)
-        const isOffline = () => resolve(false)
+  private ping(settings: { urls: string[]; timeout: number }) {
+    return new Promise((resolve) => {
+      const isOnline = () => resolve(true)
+      const isOffline = () => resolve(false)
 
-        const fetchs = urls.map((url) => {
-          const timeoutCtrl = new AbortController()
-          const timeoutId = setTimeout(() => timeoutCtrl.abort(), timeout)
+      const fetchs = settings.urls.map((url) => {
+        const timeoutCtrl = new AbortController()
+        const timeoutId = setTimeout(
+          () => timeoutCtrl.abort(),
+          settings.timeout
+        )
 
-          const fetcher = fetch(url, {
-            mode: 'no-cors',
-            signal: timeoutCtrl.signal,
-          })
-          fetcher
-            .catch((_) => {})
-            .finally(() => timeoutId && clearTimeout(timeoutId))
-
-          return fetcher
+        const fetcher = fetch(url, {
+          mode: 'no-cors',
+          signal: timeoutCtrl.signal,
         })
+        fetcher
+          .catch((_) => {})
+          .finally(() => timeoutId && clearTimeout(timeoutId))
 
-        Promise.any(fetchs).then(isOnline).catch(isOffline)
+        return fetcher
       })
-    }
 
-    private startPing() {
-      const { intervalTime } = this.options
+      Promise.any(fetchs).then(isOnline).catch(isOffline)
+    })
+  }
 
-      this.pingId = setInterval(() => {
-        const { urls, timeout } = this.options
-        this.ping({ urls, timeout }).then((online) => {
-          if (online) {
-            if (!this.isOnline) {
-              this.isOnline = true
+  private startPing() {
+    const { intervalTime } = this.options
 
-              //TODO: notify that network status is online
-              this.onlineListeners.forEach((listener) => listener())
-              this.onChangeListeners.forEach((listener) => listener('online'))
+    this.pingId = setInterval(() => {
+      const { urls, timeout } = this.options
+      this.ping({ urls, timeout }).then((online) => {
+        if (online) {
+          if (!this.isOnline) {
+            this.isOnline = true
 
-              //TODO: reset ping more slowly.
-              this.options.intervalTime = 10000
-              this.stopPing()
-              this.startPing()
-            }
-          } else {
-            if (this.isOnline) {
-              this.isOnline = false
+            //TODO: notify that network status is online
+            this.onlineListeners.forEach((listener) => listener())
+            this.onChangeListeners.forEach((listener) => listener('online'))
 
-              //TODO: notify that network status is offline
-              this.offlineListeners.forEach((listener) => listener())
-              this.onChangeListeners.forEach((listener) => listener('offline'))
-
-              //TODO: reset ping more quickly.
-              this.options.intervalTime = 3000
-              this.stopPing()
-              this.startPing()
-            }
+            //TODO: reset ping more slowly.
+            this.options.intervalTime = 10000
+            this.stopPing()
+            this.startPing()
           }
-        })
-      }, intervalTime)
-    }
+        } else {
+          if (this.isOnline) {
+            this.isOnline = false
 
-    private stopPing() {
-      if (this.pingId) {
-        clearInterval(this.pingId)
-      }
-    }
+            //TODO: notify that network status is offline
+            this.offlineListeners.forEach((listener) => listener())
+            this.onChangeListeners.forEach((listener) => listener('offline'))
+
+            //TODO: reset ping more quickly.
+            this.options.intervalTime = 3000
+            this.stopPing()
+            this.startPing()
+          }
+        }
+      })
+    }, intervalTime)
   }
 
-  if (!window.ZlcaDetectNetwork) {
-    const detectNetwork = new DetectNetwork()
-    window.ZlcaDetectNetwork = detectNetwork
+  private stopPing() {
+    if (this.pingId) {
+      clearInterval(this.pingId)
+    }
   }
-})()
+}
+
+const detectNetwork = new DetectNetwork()
+
+export default detectNetwork

@@ -1,4 +1,6 @@
-class Logger {
+import { ILogger } from '../declares/interfaces'
+
+class Logger implements ILogger {
   log(request) {
     return (response) => {
       console.log('>>>LOGGER: running...')
@@ -7,9 +9,8 @@ class Logger {
       console.log('>>>RESPONSE:')
       console.log(response)
       console.log('>>>LOGGER: ended...')
-      return response
     }
   }
 }
 
-export default Logger
+const logger = new Logger()

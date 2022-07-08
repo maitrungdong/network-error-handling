@@ -1,13 +1,10 @@
-import BlockedUrlError from '../types/errors/BlockedUrlError'
-
-type BlockedURL = {
-  url: string
-  expiredAt: Date | 'infinite'
-}
+import BlockedUrlError from '../classes/errors/BlockedUrlError'
+import { IInterceptor } from '../declares/interfaces'
+import { BlockedURL } from '../declares/types'
 
 const CLEAR_BLOCKED_URLS_TIME = 60 * 60 * 1000 // an hour
 
-class Interceptor {
+class Interceptor implements IInterceptor {
   private blackList: BlockedURL[] = []
 
   constructor() {
@@ -15,7 +12,7 @@ class Interceptor {
     setInterval(this.clearExpiredBlockedUrls, CLEAR_BLOCKED_URLS_TIME)
   }
 
-  interceptRequest(request) {
+  public interceptReq(request) {
     const { url } = request
 
     const isBlocked = this.isBlocked(url)
@@ -30,7 +27,7 @@ class Interceptor {
     return request
   }
 
-  async interceptResponse(response) {
+  public async interceptRes(response) {
     try {
       return await response
     } catch (err) {
@@ -44,7 +41,7 @@ class Interceptor {
     }
   }
 
-  addBlockedURL(item: { url: string; blockTime: number | 'infinite' }) {
+  public addBlockedURL(item: { url: string; blockTime: number | 'infinite' }) {
     if (item.blockTime === 'infinite') {
       this.blackList.push({
         url: item.url,
@@ -58,15 +55,15 @@ class Interceptor {
     }
   }
 
-  getBlockedURL(url: string) {
+  public getBlockedURL(url: string): BlockedURL | undefined {
     return this.blackList.find((item) => item.url === url)
   }
 
-  removeBlockedURL(url: string) {
+  public removeBlockedURL(url: string) {
     this.blackList = this.blackList.filter((item) => item.url !== url)
   }
 
-  isBlocked(url: string) {
+  public isBlocked(url: string): boolean {
     const item = this.blackList.find((item) => item.url === url)
 
     if (!item) return true
@@ -85,7 +82,7 @@ class Interceptor {
     this.removeBlockedURL(unBlockUrl)
   }
 
-  public clearExpiredBlockedUrls() {
+  private clearExpiredBlockedUrls() {
     this.blackList = this.blackList.reduce(
       (currBlockedUrls: BlockedURL[], bu: BlockedURL) => {
         const { expiredAt } = bu

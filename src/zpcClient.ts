@@ -1,22 +1,38 @@
-import axiosEngine from './AxiosEngine.js'
-import AbortablePendingRequest from './helpers/Types/AbortablePendingRequest.js'
-import 'utils/networkStatus.js'
-import interceptor from './helpers/interceptor.js'
+import axiosEngine from './axioEngine'
+import AbortablePendingRequest from './classes/AbortablePendingRequest'
+import interceptor from './handlers/interceptor'
+import { IAxiosEngine, IInterceptor } from './declares/interfaces'
+import { RetrySchema, ZPCRequestSchema } from './declares/types'
+
+type ZPCRequestOptions = {
+  baseURL: string
+  headers: any
+  timeout: number
+  withCredentials: boolean
+  responseType: string
+  maxContentLength: number
+  maxBodyLength: number
+}
+
+declare type RestMethod = (
+  url: string,
+  requestSchema: ZPCRequestSchema
+) => AbortablePendingRequest
 
 const BASE_API_URL = 'http://localhost:8080'
 /**
  * Prepare configs and set up default configs
- * Intercept requests before pass them to AxiosEngine
+ * Intercept request parameters before passing them to AxiosEngine
  */
-class ZlcaClient {
+class ZpcClient {
   //Default retrySchema setting:
-  _defaultRetrySchema = {
+  private defaultRetrySchema: RetrySchema = {
     maxRetries: 3,
     msBackoff: 200,
-    errorCodes: [408, 500, 502, 503, 504], //Các mã lỗi cho cái retry schema này!
+    errorCodes: [408, 500, 502, 503, 504],
   }
 
-  _requestOptions = {
+  private requestOptions: ZPCRequestOptions = {
     baseURL: `${BASE_API_URL}`,
     headers: { 'Content-Type': 'application/json' },
     timeout: 1000,
@@ -26,81 +42,71 @@ class ZlcaClient {
     maxBodyLength: 2000,
   }
 
-  _engine = null
-  _interceptor = null
+  private engine!: IAxiosEngine
+  private interceptor!: IInterceptor
 
-  constructor(retrySchema = {}, requestOptions = {}) {
-    this._configRequestOptions(requestOptions)
-    this._configRetrySchema(retrySchema)
+  public post: RestMethod
+  public get: RestMethod
+  public put: RestMethod
+  public delete: RestMethod
 
-    this.post = this._generateRestMethod('post').bind(this)
-    this.get = this._generateRestMethod('get').bind(this)
-    this.put = this._generateRestMethod('put').bind(this)
-    this.delete = this._generateRestMethod('delete').bind(this)
+  constructor(retrySchema: RetrySchema, requestOptions: ZPCRequestOptions) {
+    this.configRequestOptions(requestOptions)
+    this.configRetrySchema(retrySchema)
+
+    this.post = this.generateRestMethod('post').bind(this)
+    this.get = this.generateRestMethod('get').bind(this)
+    this.put = this.generateRestMethod('put').bind(this)
+    this.delete = this.generateRestMethod('delete').bind(this)
   }
 
-  useInterceptor(interceptor) {
-    if (typeof interceptor === 'object') {
-      this._interceptor = interceptor
-    }
+  useInterceptor(interceptor: IInterceptor) {
+    this.interceptor = interceptor
   }
 
-  useAxiosEngine(engine) {
-    if (typeof engine === 'object') {
-      this._engine = engine
-    }
+  useAxiosEngine(engine: IAxiosEngine) {
+    this.engine = engine
   }
 
-  _configRequestOptions = (options = {}) => {
-    if (typeof options.baseApiURL === 'string') {
-      this._requestOptions.baseApiURL = options.baseApiURL
-    }
-    if (typeof options.headers === 'object') {
-      this._requestOptions.headers = options.headers
-    }
-  }
-
-  _configRetrySchema = (schema = {}) => {
-    if (typeof schema.maxRetries === 'number') {
-      this._defaultRetrySchema.maxRetries = schema.maxRetries
-    }
-    if (typeof schema.shouldRetry === 'boolean') {
-      this._defaultRetrySchema.shouldRetry = schema.shouldRetry
-    }
-    if (typeof schema.msBackoff === 'number') {
-      this._defaultRetrySchema.msBackoff = schema.msBackoff
-    }
-    if (Array.isArray(schema.retryableErrors)) {
-      this._defaultRetrySchema.retryableErrors = [...schema.retryableErrors]
+  private configRequestOptions = (options: ZPCRequestOptions) => {
+    this.requestOptions = {
+      ...this.requestOptions,
+      ...options,
     }
   }
 
-  _generateRestMethod(method) {
-    return (route, requestSchema = {}) => {
+  private configRetrySchema = (schema: RetrySchema) => {
+    this.defaultRetrySchema = {
+      ...this.defaultRetrySchema,
+      ...schema,
+    }
+  }
+
+  private generateRestMethod(method: string) {
+    return (
+      route: string,
+      requestSchema: ZPCRequestSchema
+    ): AbortablePendingRequest => {
       const {
         requestConfig,
-        isAbortable,
         shouldHold,
         waitNetworkTime,
         retrySchemas: retrySchms,
       } = requestSchema
-      let { headers, params, data, ...restRequestConfig } = requestConfig || {}
+      let { headers, params, data, ...restRequestConfig } = requestConfig
 
       headers = {
-        ...this._requestOptions.headers,
+        ...this.requestOptions.headers,
         ...headers,
       }
 
       restRequestConfig = {
-        ...this._requestOptions,
+        ...this.requestOptions,
         ...restRequestConfig,
       }
 
-      delete restRequestConfig.baseURL
-      delete restRequestConfig.headers
-
-      const abortCtrl = isAbortable ? new AbortController() : null
-      const url = this._getAPIUrl(route, params).toString()
+      const abortCtrl = new AbortController()
+      const url = this.getAPIUrl(route, params).toString()
 
       const request = Object.assign(
         {
@@ -108,44 +114,42 @@ class ZlcaClient {
           headers,
           method: method.toUpperCase(),
           ...restRequestConfig,
+          signal: abortCtrl?.signal,
         },
-        isAbortable && { signal: abortCtrl.signal },
+
         method !== 'get' && { data }
       )
 
       //TODO: check if it's in blacklist.
-      this._interceptor.interceptRequest(request)
+      this.interceptor.interceptReq(request)
 
-      let retrySchemas = null
+      let retrySchemas: RetrySchema[] = []
       if (retrySchms) {
         retrySchemas =
           retrySchms === 'default'
-            ? { ...this._defaultRetrySchema }
+            ? [{ ...this.defaultRetrySchema }]
             : [...retrySchms]
       }
 
       //TODO: Thêm một cái wrapper (đánh chặn cho thằng interceptor ở đây!)
-      const response = this._engine.request(request, retrySchemas, {
+      const response = this.engine.request(request, retrySchemas, {
         shouldHold,
         waitNetworkTime,
       })
 
-      const pendingResponse = this._interceptor.interceptResponse(response)
-      if (isAbortable) {
-        return new AbortablePendingRequest(pendingResponse, abortCtrl)
-      } else {
-        return pendingResponse
-      }
+      const pendingResponse = this.interceptor.interceptRes(response)
+
+      return new AbortablePendingRequest(pendingResponse, abortCtrl)
     }
   }
 
-  _getAPIUrl(route, params) {
+  private getAPIUrl(route: string, params: any) {
     //TODO: check if route is absolute url
-    let url = null
+    let url: URL
     if (this._isAbsoluteURL(route)) {
       url = new URL(route)
     } else {
-      url = new URL(this._requestOptions.baseApiURL)
+      url = new URL(this.requestOptions.baseURL)
       url.pathname = `${route}`
     }
 
@@ -160,15 +164,16 @@ class ZlcaClient {
     return url
   }
 
-  _isAbsoluteURL(url) {
+  _isAbsoluteURL(url: string) {
     const http = /^https?:\/\//i
     const https = /^https?:\/\/|^\/\//i
     return http.test(url) || https.test(url)
   }
 }
 
-const zlcaClient = new ZlcaClient()
-zlcaClient.useAxiosEngine(axiosEngine)
-zlcaClient.useInterceptor(interceptor)
+const zpcClient = new ZpcClient()
 
-export default zlcaClient
+zpcClient.useAxiosEngine(axiosEngine)
+zpcClient.useInterceptor(interceptor)
+
+export default zpcClient

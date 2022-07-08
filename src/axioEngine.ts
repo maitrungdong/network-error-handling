@@ -1,20 +1,20 @@
-import axiosCore from './axiosCore'
-import delay from './utils/delay'
-
-import WaitRequestsManager from './handlers/WaitRequestsManager'
-
-import { isEmptyObj } from './utils/helpers'
-
+import { delay, isEmptyObj } from './utils/helpers'
 import { errorCodes } from './utils/constants'
-import BadRequestError from './types/errors/BadRequestError'
-import BlockedUrlError from './types/errors/BlockedUrlError'
-import Api404Error from './types/errors/Api404Error'
-import DisconnectNetworkError from './types/errors/DisconnectNetworkError'
-import RetrySchema from './types/RetrySchema'
-import BaseError from './types/errors/BaseError'
+import { RetrySchema, ZPCRequest } from './declares/types'
 
-class AxiosEngine {
-  NETWORK_ERROR = {
+import WaitRequestsManager from './handlers/waitRequestsManager'
+
+import BadRequestError from './classes/errors/BadRequestError'
+import BlockedUrlError from './classes/errors/BlockedUrlError'
+import Api404Error from './classes/errors/Api404Error'
+import DisconnectNetworkError from './classes/errors/DisconnectNetworkError'
+import BaseError from './classes/errors/BaseError'
+
+import axiosCore from './axiosCore'
+import { IAxiosEngine, IWaitRequestsManager } from './declares/interfaces'
+
+class AxiosEngine implements IAxiosEngine {
+  private NETWORK_ERROR = {
     statusCode: errorCodes.DISNETWORK_ERROR,
     contentType: 'application/json',
     body: {
@@ -24,13 +24,17 @@ class AxiosEngine {
     },
   }
 
-  private waitRequestsManager!: WaitRequestsManager
+  private waitRequestsManager!: IWaitRequestsManager
 
-  useWaitRequestsManager(waitRequestsManager: WaitRequestsManager) {
+  public useWaitRequestsManager(waitRequestsManager: IWaitRequestsManager) {
     this.waitRequestsManager = waitRequestsManager
   }
 
-  request = async (request, retrySchemas, waitNetworkConfig) => {
+  public request = async (
+    request,
+    retrySchemas: RetrySchema[],
+    waitNetworkConfig
+  ) => {
     //STEP01: thực hiện request đầu tiên để kiểm tra xem mình cần dùng retrySchema nào
     //dựa trên mã lỗi.
     let response = this.standardResponse(await this.tryRequest(request))
@@ -38,16 +42,12 @@ class AxiosEngine {
 
     //STEP02: nếu không thành công thì sẽ đi tìm một retrySchema phù hợp để retry.
     //Nếu không có thì throw response
-    const retrySchema = Array.isArray(retrySchemas)
-      ? {
-          ...retrySchemas.find((rtSchm) =>
-            rtSchm.errorCodes.includes(response.statusCode)
-          ),
-        }
-      : { ...retrySchemas }
+    const retrySchema = retrySchemas.find((rtSchm) =>
+      rtSchm.errorCodes.includes(response.statusCode)
+    )
     if (isEmptyObj(retrySchema)) throw response
 
-    response = await this.requestWithRetries(request, retrySchema)
+    response = await this.requestWithRetries(request, retrySchema!)
     if (response.success) return response
 
     //STEP03: nếu response không thành công, kiểm tra nếu không thành công là do network.
@@ -86,7 +86,7 @@ class AxiosEngine {
     }
   }
 
-  private tryRequest = async (request) => {
+  private tryRequest = async (request: ZPCRequest) => {
     try {
       const response = await axiosCore.request(request)
 
@@ -99,7 +99,7 @@ class AxiosEngine {
     }
   }
 
-  public requestWithRetries = async (request, retrySchema: RetrySchema) => {
+  private requestWithRetries = async (request, retrySchema: RetrySchema) => {
     const stack: RetrySchema[] = []
     stack.push(retrySchema)
 
