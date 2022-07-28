@@ -1,6 +1,14 @@
 class Deferer {
-  private timeoutId?: number
+  private timeoutId: any
   private promiseResolve?: (value?: unknown) => void
+
+  constructor() {
+    console.log('Cancel delaying in 5s...')
+    setTimeout(() => {
+      this.cancelDelay()
+      console.log('Canceled delaying.')
+    }, 5000)
+  }
 
   cancelDelay() {
     if (this.timeoutId) {

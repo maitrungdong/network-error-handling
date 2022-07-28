@@ -4,12 +4,12 @@ import BaseError from './BaseError'
 
 class Api404Error extends BaseError {
   constructor(
-    message = 'API: Not found!',
-    data,
-    statusCode = errorCodes.NOT_FOUND,
-    name = 'Api404Error'
+    message: string = 'API: Not found!',
+    data: any,
+    status: number = errorCodes.NOT_FOUND,
+    name: string = 'Api404Error'
   ) {
-    super(name, message, statusCode, data)
+    super(name, message, status, data)
   }
 }
 

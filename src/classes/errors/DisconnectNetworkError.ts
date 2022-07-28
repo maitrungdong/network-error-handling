@@ -6,10 +6,10 @@ class DisconnectNetworkError extends BaseError {
   constructor(
     message = 'Network is disconnect!',
     data,
-    statusCode = errorCodes.DISNETWORK_ERROR,
+    status = errorCodes.DISNETWORK_ERROR,
     name = 'DisconnectNetworkError'
   ) {
-    super(name, message, statusCode, data)
+    super(name, message, status, data)
   }
 }
 

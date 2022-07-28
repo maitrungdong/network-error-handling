@@ -25,6 +25,7 @@ bower_components
 # Ignore built ts files
 build
 dist
+test
 
 # Editors
 .idea

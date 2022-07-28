@@ -1,5 +1,7 @@
+import { AxiosRequestConfig } from 'axios'
 import Deferer from '../classes/Deferer'
-import { WaitRequest } from '../declares/types'
+
+import { RetrySchema, WaitRequest } from '../declares/types'
 import { IWaitRequestsManager } from '../declares/interfaces'
 
 import detectNetwork from '../detectNetwork'
@@ -7,7 +9,7 @@ import detectNetwork from '../detectNetwork'
 const CLEAR_WAIT_REQUESTS_TIME = 60 * 60 * 1000 // an hour
 const INFINITE_TIME = 365 * 24 * 60 * 60 * 1000 // a year
 
-class WaitRequestsManager implements IWaitRequestsManager {
+export class WaitRequestsManager implements IWaitRequestsManager {
   private waitRequests: WaitRequest[] = []
   private isOnline: boolean = true
 
@@ -17,12 +19,12 @@ class WaitRequestsManager implements IWaitRequestsManager {
   }
 
   //Helper
-  static getRemainTime(waitRequest: WaitRequest) {
-    let remainTime: string | number
+  static getRemainTime(waitRequest: WaitRequest): number | 'infinite' {
+    let remainTime: number | 'infinite'
     if (waitRequest.isInfinite) {
       remainTime = 'infinite'
     } else {
-      remainTime = Date.now() - waitRequest.expiredAt.getTime()
+      remainTime = waitRequest.expiredAt.getTime() - Date.now()
       remainTime = remainTime < 0 ? 0 : remainTime
     }
     return remainTime
@@ -30,7 +32,7 @@ class WaitRequestsManager implements IWaitRequestsManager {
 
   //Helper
   static getTimeToDelay(waitRequest: WaitRequest): number {
-    const timeToDelay = Date.now() - waitRequest.expiredAt.getTime()
+    const timeToDelay = waitRequest.expiredAt.getTime() - Date.now()
     return timeToDelay < 0 ? 0 : timeToDelay
   }
 
@@ -38,7 +40,11 @@ class WaitRequestsManager implements IWaitRequestsManager {
     this.waitRequests = this.waitRequests.filter((wr) => wr.id !== waitReqId)
   }
 
-  public createWaitRequest(request, retrySchemas, waitNetworkTime) {
+  public createWaitRequest(
+    request: AxiosRequestConfig,
+    retrySchemas: RetrySchema[],
+    waitNetworkTime: number | 'infinite'
+  ) {
     const waitRequest: WaitRequest = {
       id: Date.now().toString(),
       requestConfig: {
@@ -89,4 +95,4 @@ detectNetwork.addEventListener(
   'change',
   waitRequestsManager.networkStatusListener
 )
-export default WaitRequestsManager
+export default waitRequestsManager

@@ -1,9 +1,9 @@
-import ZPCRequest from '../types/ZpcRequest'
+import { RetrySchema, ZPCRequestSchema } from '../declares/types'
 import zpcClient from '../zpcClient'
 
 class ConversationsAPIDataSource {
   getConverById(converId: number) {
-    const retrySchemas = [
+    const retrySchemas: RetrySchema[] = [
       {
         maxRetries: 1,
         msBackoff: 100,
@@ -21,7 +21,7 @@ class ConversationsAPIDataSource {
       },
     ]
 
-    const request: ZPCRequest = {
+    const request: ZPCRequestSchema = {
       requestConfig: {
         params: {
           converId,
@@ -32,6 +32,6 @@ class ConversationsAPIDataSource {
       retrySchemas,
     }
 
-    const pendingRequest = zpcClient.
+    const pendingRequest = zpcClient.get('/conversations', request)
   }
 }

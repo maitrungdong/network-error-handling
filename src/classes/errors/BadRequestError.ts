@@ -5,10 +5,10 @@ class BadRequestError extends BaseError {
   constructor(
     message = 'API: Bad request!',
     data,
-    statusCode = errorCodes.BAD_REQUEST,
+    status = errorCodes.BAD_REQUEST,
     name = 'BadRequestError'
   ) {
-    super(name, message, statusCode, data)
+    super(name, message, status, data)
   }
 }
 

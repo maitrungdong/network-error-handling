@@ -1,6 +1,7 @@
-import BlockedUrlError from '../classes/errors/BlockedUrlError'
 import { IInterceptor } from '../declares/interfaces'
 import { BlockedURL } from '../declares/types'
+
+import BlockedUrlError from '../classes/errors/BlockedUrlError'
 
 const CLEAR_BLOCKED_URLS_TIME = 60 * 60 * 1000 // an hour
 
@@ -8,23 +9,19 @@ class Interceptor implements IInterceptor {
   private blackList: BlockedURL[] = []
 
   constructor() {
-    //TODO: set interval to clear blockedUrl if it expires each one hour.
+    //TODO: set interval to clear blockedUrls if it expires each one hour.
     setInterval(this.clearExpiredBlockedUrls, CLEAR_BLOCKED_URLS_TIME)
   }
 
-  public interceptReq(request) {
-    const { url } = request
-
-    const isBlocked = this.isBlocked(url)
+  public interceptReqUrl(reqUrl: string) {
+    const isBlocked = this.isBlocked(reqUrl)
     if (isBlocked) {
-      const blockedUrlItem = this.getBlockedURL(url)!
+      const blockedUrlItem = this.getBlockedURL(reqUrl)!
       throw new BlockedUrlError(
         `This url: ${blockedUrlItem.url} is blocked to ${blockedUrlItem.expiredAt}! Please try it later.`,
         null
       )
     }
-
-    return request
   }
 
   public async interceptRes(response) {
@@ -66,8 +63,8 @@ class Interceptor implements IInterceptor {
   public isBlocked(url: string): boolean {
     const item = this.blackList.find((item) => item.url === url)
 
-    if (!item) return true
-    if (item.expiredAt === 'infinite') return false
+    if (!item) return false
+    if (item.expiredAt === 'infinite') return true
 
     const remain = item.expiredAt.getTime() - Date.now()
     return remain > 0

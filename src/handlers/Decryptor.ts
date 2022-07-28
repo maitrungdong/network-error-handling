@@ -1,8 +1,9 @@
+import { AxiosResponse } from 'axios'
 import { IDecryptor } from '../declares/interfaces'
 
 class Decryptor implements IDecryptor {
-  decrypt(rawResponse) {
-    let decryptedRes = null
+  decrypt(rawResponse: AxiosResponse) {
+    let decryptedRes: AxiosResponse
     //TODO: process rawResponse to decrypted response
     console.log('>>>DECRYPTOR: running...')
     decryptedRes = rawResponse
@@ -13,5 +14,4 @@ class Decryptor implements IDecryptor {
   }
 }
 
-const decryptor = new Decryptor()
-export default decryptor
+export default Decryptor

@@ -1,0 +1,41 @@
+{
+  "presets": [
+    "@babel/preset-typescript",
+    [
+      "@babel/preset-env",
+      {
+        "targets": {
+          "node": "current" // the target node version, boolean true, or "current".
+        },
+        "modules": false,
+        "useBuiltIns": false
+      }
+    ]
+  ],
+  "plugins": [
+    [
+      "module-extension-resolver",
+      {
+        "srcExtensions": [
+          ".js",
+          ".cjs",
+          ".mjs",
+          ".es",
+          ".es6",
+          ".ts",
+          ".node",
+          ".json"
+        ],
+        "dstExtension": ".js",
+        "extensionsToKeep": [".json"]
+      }
+    ]
+    // [
+    //     "@babel/plugin-transform-runtime",
+    //     {
+    //       "regenerator": true,
+    //       "corejs": 3
+    //     }
+    // ]
+  ]
+}

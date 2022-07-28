@@ -1,4 +1,7 @@
+import { AxiosRequestConfig } from 'axios'
 import Deferer from '../classes/Deferer'
+
+import { StandardResponse } from './interfaces'
 
 export declare type RetrySchema = {
   maxRetries: number
@@ -17,17 +20,8 @@ export declare type WaitRequest = {
   deferer: Deferer
 }
 
-export declare type ZPCRequest = {
-  headers?: Headers
-  params?: object
-  data?: object
-  timeout?: number
-  withCredentials?: boolean
-  responseType?: string
-}
-
 export declare type ZPCRequestSchema = {
-  requestConfig: ZPCRequest
+  requestConfig: AxiosRequestConfig
   shouldHold?: boolean
   waitNetworkTime?: number | 'infinite'
   retrySchemas?: RetrySchema[] | 'default'
@@ -39,6 +33,6 @@ export declare type BlockedURL = {
 }
 
 export declare type WaitNetworkConfig = {
-  waitNetworkTime: number | 'infinte'
+  waitNetworkTime: number | 'infinite'
   shouldHold: boolean
 }

@@ -1,8 +1,10 @@
+import { AxiosRequestConfig, AxiosResponse } from 'axios'
+
 import { ILogger } from '../declares/interfaces'
 
 class Logger implements ILogger {
-  log(request) {
-    return (response) => {
+  log(request: AxiosRequestConfig) {
+    return (response: AxiosResponse) => {
       console.log('>>>LOGGER: running...')
       console.log('>>>REQUEST:')
       console.log(request)
@@ -13,4 +15,4 @@ class Logger implements ILogger {
   }
 }
 
-const logger = new Logger()
+export default Logger

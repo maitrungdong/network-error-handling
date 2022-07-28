@@ -1,10 +1,11 @@
-import WaitRequestsManager from '../handlers/waitRequestsManager'
-import { BlockedURL, RetrySchema, WaitRequest, ZPCRequest } from './types'
+import { AxiosRequestConfig, AxiosResponse } from 'axios'
+
+import { BlockedURL, RetrySchema, WaitRequest } from './types'
 
 export declare interface IWaitRequestsManager {
   removeWaitRequestById(waitReqId: string): void
   createWaitRequest(
-    request: ZPCRequest,
+    request: AxiosRequestConfig,
     retrySchemas: RetrySchema[],
     waitNetworkTime: number | 'infinite'
   ): WaitRequest
@@ -12,11 +13,11 @@ export declare interface IWaitRequestsManager {
 }
 
 export declare interface IDecryptor {
-  decrypt(rawResponse): any
+  decrypt(rawResponse): AxiosResponse
 }
 
 export declare interface IInterceptor {
-  interceptReq(request: any): any
+  interceptReqUrl(reqUrl: string): any
   interceptRes(response: any): any
   addBlockedURL(item: { url: string; blockTime: number | 'infinite' }): void
   getBlockedURL(url: string): BlockedURL | undefined
@@ -26,20 +27,27 @@ export declare interface IInterceptor {
 }
 
 export declare interface ILogger {
-  log(request): (response) => void
+  log(request: AxiosRequestConfig): (response: AxiosResponse) => void
 }
 
 export declare interface IAxiosEngine {
   useWaitRequestsManager(waitRequestsManager: IWaitRequestsManager): void
   request(
-    request: ZPCRequest,
+    request: AxiosRequestConfig,
     retrySchemas: RetrySchema[],
     waitNetworkConfig: WaitNetworkConfig
   )
 }
 
 export declare interface IAxiosCore {
-  request(request: ZPCRequest): any
+  request(request: AxiosRequestConfig): any
   useLogger(logger: ILogger): void
   useDecryptor(decryptor: IDecryptor): void
+}
+
+export declare interface IStandardResponse {
+  success: boolean
+  status: number
+  data: any
+  message: string
 }
